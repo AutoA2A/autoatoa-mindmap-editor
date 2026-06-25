@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>关于我们</title>
+<style>
+:root{
+    --primary:#2563eb;
+    --secondary:#10b983;
+    --bg:#f9fafb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:Helvetica Neue,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin-top:60px; /* space for injected nav */
+}
+.container{
+    max-width:800px;
+    margin:0 auto;
+    padding:16px;
+}
+.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    padding:24px;
+    margin-bottom:24px;
+}
+h1{
+    color:var(--primary);
+    margin-top:0;
+    margin-bottom:16px;
+    font-size:1.8rem;
+}
+h2{
+    color:var(--primary);
+    margin-top:24px;
+    margin-bottom:12px;
+    font-size:1.4rem;
+}
+p{
+    line-height:1.6;
+    margin-bottom:12px;
+}
+.btn{
+    display:inline-block;
+    padding:10px 16px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:0.95rem;
+    margin-right:8px;
+    margin-bottom:8px;
+    text-decoration:none;
+}
+.btn:hover{
+    background:#1d4ed8;
+}
+.btn-secondary{
+    background:var(--secondary);
+}
+.btn-secondary:hover{
+    background:#0d9488;
+}
+#licenseText{
+    white-space:pre-wrap;
+    background:#f3f4f6;
+    padding:12px;
+    border-radius:4px;
+    max-height:200px;
+    overflow:auto;
+    display:none;
+}
+#licenseText.show{
+    display:block;
+}
+</style>
+<meta name="description" content="展示项目信息、版本号和开源许可证。"><meta name="keywords" content="思维导图,在线编辑,拖拽节点,导出PNG,模板库,历史记录,实时协作,响应式"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="关于我们"><meta property="og:description" content="展示项目信息、版本号和开源许可证。"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="关于我们"><meta name="twitter:description" content="展示项目信息、版本号和开源许可证。"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"关于我们","description":"展示项目信息、版本号和开源许可证。","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+<div class="container">
+    <div class="card">
+        <h1>关于我们</h1>
+        <p>思维导图编辑器是一款基于浏览器的交互式工具，支持节点拖拽、属性编辑、本地保存及导出等功能。</p>
+        <p>项目版本：<span id="version">v1.0.0</span></p>
+        <button id="copyVersionBtn" class="btn">复制版本号</button>
+    </div>
+
+    <div class="card">
+        <h2>开源许可证</h2>
+        <button id="toggleLicenseBtn" class="btn btn-secondary">显示许可证</button>
+        <pre id="licenseText">MIT License
+
+Copyright (c) 2025 思维导图编辑器团队
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</pre>
+    </div>
+
+    <div class="card">
+        <h2>关于 AutoA2A</h2>
+        <p>✅️AutoA2A是智能体互连 Agent to Agent平台，实现智能体间的无缝发现、协商、协作与数据安全交换，让您的智能体从信息孤岛走向高效协同，重塑数字化生产力。赋能多智能体生态发展自动化与AI协作,开启AI即服务新时代。</p>
+        <p>官网：<a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;">www.autoa2a.org</a></p>
+    </div>
+
+    <a href="index.html" class="btn">返回编辑器</a>
+</div>
+
+<script>
+document.getElementById('copyVersionBtn').addEventListener('click', function(){
+    const version = document.getElementById('version').textContent;
+    navigator.clipboard.writeText(version).then(()=>{
+        alert('版本号已复制：'+version);
+    }).catch(err=>{
+        alert('复制失败：'+err);
+    });
+});
+
+document.getElementById('toggleLicenseBtn').addEventListener('click', function(){
+    const licenseEl = document.getElementById('licenseText');
+    const isShown = licenseEl.classList.toggle('show');
+    this.textContent = isShown ? '隐藏许可证' : '显示许可证';
+});
+</script>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
