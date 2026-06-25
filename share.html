@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分享与协作</title>
+<style>
+:root{
+    --primary:#2563eb;
+    --secondary:#10b983;
+    --bg:#f9fafb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin-top:60px; /* 留给系统注入的统一导航 */
+}
+.container{
+    max-width:800px;
+    margin:0 auto;
+    padding:16px;
+}
+.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    padding:16px;
+    margin-bottom:16px;
+}
+h2{
+    margin-top:0;
+    color:var(--primary);
+    font-size:1.5rem;
+}
+label{
+    display:block;
+    margin-top:12px;
+    font-weight:600;
+}
+input[type=checkbox]{
+    margin-right:8px;
+}
+textarea{
+    width:100%;
+    height:80px;
+    padding:8px;
+    margin-top:8px;
+    border:1px solid #ccc;
+    border-radius:4px;
+    font-family:monospace;
+    font-size:0.9rem;
+    resize:vertical;
+}
+button{
+    display:inline-block;
+    margin-top:12px;
+    padding:10px 16px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    font-size:1rem;
+    cursor:pointer;
+}
+button:hover{
+    background:#1d4ed8;
+}
+.secondary-btn{
+    background:var(--secondary);
+}
+.secondary-btn:hover{
+    background:#0d9488;
+}
+.hint{
+    color:var(--muted);
+    font-size:0.9rem;
+    margin-top:8px;
+}
+</style>
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:title" content="分享与协作">
+<meta property="og:description" content="生成可分享的链接或嵌入码，设置查看/编辑权限。">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="分享与协作">
+<meta name="twitter:description" content="生成可分享的链接或嵌入码，设置查看/编辑权限。">
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"WebApplication",
+  "name":"分享与协作",
+  "description":"生成可分享的链接或嵌入码，设置查看/编辑权限。",
+  "applicationCategory":"UtilitiesApplication",
+  "operatingSystem":"Any",
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}
+}
+</script>
+<style data-a2a="basecss">
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+img,canvas,svg,video,table{max-width:100%;height:auto}
+pre,code{white-space:pre-wrap;word-break:break-word}
+[data-a2a="header"]{width:100%}
+@media(max-width:640px){body{font-size:15px}}
+</style>
+<meta name="description" content="生成可分享的链接或嵌入码，设置查看/编辑权限。"><meta name="keywords" content="思维导图,在线编辑,拖拽节点,导出PNG,模板库,历史记录,实时协作,响应式"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="分享与协作"><meta property="og:description" content="生成可分享的链接或嵌入码，设置查看/编辑权限。"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="分享与协作"><meta name="twitter:description" content="生成可分享的链接或嵌入码，设置查看/编辑权限。"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"分享与协作","description":"生成可分享的链接或嵌入码，设置查看/编辑权限。","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script></head>
+<body>
+<div class="container">
+    <div class="card">
+        <h2>分享链接</h2>
+        <div id="linkArea" class="hint">正在获取当前思维导图数据……</div>
+        <textarea id="linkOutput" readonly></textarea>
+        <button id="copyLinkBtn">复制链接</button>
+    </div>
+
+    <div class="card">
+        <h2>嵌入码（iframe）</h2>
+        <textarea id="embedOutput" readonly></textarea>
+        <button id="copyEmbedBtn">复制嵌入码</button>
+    </div>
+
+    <div class="card">
+        <h2>权限设置</h2>
+        <label>
+            <input type="checkbox" id="viewOnlyChk">
+            仅查看（禁止编辑）
+        </label>
+        <div class="hint">勾选后生成的链接将只允许查看，未勾选则可编辑。</div>
+        <button id="refreshBtn">重新生成链接</button>
+    </div>
+</div>
+
+<script>
+// ---------- IndexedDB 读取 ----------
+function openDB(){
+    return new Promise((resolve,reject)=>{
+        const request = indexedDB.open('mindmapDB',1);
+        request.onupgradeneeded = e=>{
+            const db = e.target.result;
+            if(!db.objectStoreNames.contains('state')){
+                db.createObjectStore('state');
+            }
+        };
+        request.onsuccess = e=>resolve(e.target.result);
+        request.onerror = e=>reject(e.target.error);
+    });
+}
+
+async function getStateFromIDB(){
+    try{
+        const db = await openDB();
+        return new Promise((resolve,reject)=>{
+            const tx = db.transaction('state','readonly');
+            const store = tx.objectStore('state');
+            const getReq = store.get('mindmapState');
+            getReq.onsuccess = ()=>resolve(getReq.result||null);
+            getReq.onerror = ()=>resolve(null);
+        });
+    }catch{
+        return null;
+    }
+}
+
+// ---------- 兼容读取 ----------
+async function getState(){
+    // 先尝试 IndexedDB
+    const idbData = await getStateFromIDB();
+    if(idbData){
+        try{
+            return JSON.parse(idbData);
+        }catch{
+            // 如果存的是对象直接返回
+            return idbData;
+        }
+    }
+    // 再回退到 localStorage（防止旧版仍使用）
+    try{
+        const ls = localStorage.getItem('mindmapState');
+        return ls ? JSON.parse(ls) : null;
+    }catch{
+        return null;
+    }
+}
+
+// ---------- 编码 ----------
+function base64Encode(str){
+    return btoa(unescape(encodeURIComponent(str)));
+}
+
+// ---------- 生成链接 ----------
+async function generateLink(){
+    const state = await getState();
+    if(!state){
+        document.getElementById('linkArea').textContent = '未检测到思维导图数据，请在编辑器中创建或打开一个导图后再来此页。';
+        document.getElementById('linkOutput').value = '';
+        document.getElementById('embedOutput').value = '';
+        return;
+    }
+    document.getElementById('linkArea').textContent = '以下链接包含当前导图的完整状态，可直接分享给他人。';
+    const base = location.origin + location.pathname.replace(/share\.html$/,'index.html');
+    const params = new URLSearchParams();
+    const jsonStr = JSON.stringify(state);
+    const encoded = base64Encode(jsonStr);
+    params.set('data', encoded);
+    if(document.getElementById('viewOnlyChk').checked){
+        params.set('mode','view');
+    }
+    const shareUrl = `${base}?${params.toString()}`;
+    document.getElementById('linkOutput').value = shareUrl;
+    document.getElementById('embedOutput').value = `<iframe src="${shareUrl}" width="800" height="600" style="border:none;"></iframe>`;
+}
+
+// ---------- 复制 ----------
+async function copyText(text){
+    try{
+        await navigator.clipboard.writeText(text);
+        alert('已复制到剪贴板');
+    }catch{
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('已复制到剪贴板');
+    }
+}
+
+// ---------- 事件 ----------
+document.getElementById('copyLinkBtn').addEventListener('click',()=>{
+    const txt = document.getElementById('linkOutput').value;
+    if(txt) copyText(txt);
+});
+document.getElementById('copyEmbedBtn').addEventListener('click',()=>{
+    const txt = document.getElementById('embedOutput').value;
+    if(txt) copyText(txt);
+});
+document.getElementById('refreshBtn').addEventListener('click',generateLink);
+window.addEventListener('load',generateLink);
+</script>
+
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent">
+    <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px">
+        <img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0">
+    </a>
+    <div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">
+        ✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。
+    </div>
+    <div style="font-size:13px">
+        本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成
+    </div>
+    <div style="font-size:12px;color:#aab;margin-top:6px">
+        Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有
+    </div>
+</footer>
+</body>
+</html>
