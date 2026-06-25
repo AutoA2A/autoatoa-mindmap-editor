@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置</title>
+<style>
+:root{
+    --primary:#2563eb;
+    --primary-hover:#1d4ed8;
+    --secondary:#10b983;
+    --bg:#f9fafb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+    --radius:8px;
+    --shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:Helvetica Neue,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin-top:60px; /* 为系统注入的统一导航预留 */
+    line-height:1.6;
+}
+.container{
+    max-width:960px;
+    margin:0 auto;
+    padding:16px;
+}
+h1{
+    font-size:1.8rem;
+    color:var(--primary);
+    margin-bottom:0.5rem;
+}
+p.desc{
+    color:var(--muted);
+    margin-bottom:1.5rem;
+}
+.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:24px;
+    margin-bottom:24px;
+}
+label{
+    display:block;
+    margin-bottom:0.4rem;
+    font-weight:600;
+    color:var(--text);
+}
+select, input[type="number"]{
+    width:100%;
+    padding:8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-size:0.95rem;
+    margin-bottom:1rem;
+}
+input[type="number"]{
+    -moz-appearance:textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+}
+.btn{
+    display:inline-block;
+    padding:10px 20px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-size:0.95rem;
+    transition:background .2s;
+}
+.btn:hover{
+    background:var(--primary-hover);
+}
+@media (max-width:640px){
+    h1{font-size:1.5rem;}
+}
+</style>
+<meta name="description" content="配置编辑器默认字体、颜色主题、自动保存间隔等。"><meta name="keywords" content="思维导图,在线编辑,拖拽节点,导出PNG,模板库,历史记录,实时协作,响应式"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="设置"><meta property="og:description" content="配置编辑器默认字体、颜色主题、自动保存间隔等。"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="设置"><meta name="twitter:description" content="配置编辑器默认字体、颜色主题、自动保存间隔等。"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"设置","description":"配置编辑器默认字体、颜色主题、自动保存间隔等。","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+<div class="container">
+    <h1>设置</h1>
+    <p class="desc">配置编辑器默认字体、颜色主题、自动保存间隔等。设置会自动保存到本地，编辑器将在下次打开时读取。</p>
+
+    <div class="card">
+        <h2 style="margin-top:0;margin-bottom:1rem;color:var(--secondary);font-size:1.2rem;">外观</h2>
+        <label for="fontSelect">默认字体</label>
+        <select id="fontSelect">
+            <option value="Helvetica Neue,Arial,sans-serif">Helvetica Neue (默认)</option>
+            <option value="Arial,Helvetica,sans-serif">Arial</option>
+            <option value="Courier New,monospace">Courier New</option>
+            <option value="Times New Roman,serif">Times New Roman</option>
+        </select>
+
+        <label for="themeSelect">颜色主题</label>
+        <select id="themeSelect">
+            <option value="light">浅色（默认）</option>
+            <option value="dark">深色</option>
+        </select>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0;margin-bottom:1rem;color:var(--secondary);font-size:1.2rem;">功能</h2>
+        <label for="autosaveInterval">自动保存间隔（秒）</label>
+        <input type="number" id="autosaveInterval" min="5" step="5" value="30">
+    </div>
+
+    <button class="btn" id="saveBtn">保存设置</button>
+
+    <div style="margin-top:2rem;">
+        <a href="index.html" class="btn" style="background:var(--secondary);margin-right:8px;">返回编辑器</a>
+        <a href="history.html" class="btn" style="background:var(--secondary);">查看历史记录</a>
+    </div>
+</div>
+
+<script>
+// 默认设置结构
+const defaultSettings = {
+    font: 'Helvetica Neue,Arial,sans-serif',
+    theme: 'light',
+    autosaveInterval: 30 // 秒
+};
+
+// 读取本地存储
+function loadSettings(){
+    const stored = localStorage.getItem('mindmapSettings');
+    return stored ? JSON.parse(stored) : defaultSettings;
+}
+
+// 保存到本地存储
+function saveSettings(settings){
+    localStorage.setItem('mindmapSettings', JSON.stringify(settings));
+}
+
+// 应用设置到页面（仅用于本页预览，编辑器页面会自行读取）
+function applySettings(settings){
+    document.body.style.fontFamily = settings.font;
+    if(settings.theme === 'dark'){
+        document.documentElement.style.setProperty('--bg','#1f2937');
+        document.documentElement.style.setProperty('--card','#374151');
+        document.documentElement.style.setProperty('--text','#f9fafb');
+        document.documentElement.style.setProperty('--muted','#d1d5db');
+    }else{
+        document.documentElement.style.setProperty('--bg','#f9fafb');
+        document.documentElement.style.setProperty('--card','#ffffff');
+        document.documentElement.style.setProperty('--text','#111827');
+        document.documentElement.style.setProperty('--muted','#6b7280');
+    }
+}
+
+// 初始化表单
+function initForm(){
+    const settings = loadSettings();
+    document.getElementById('fontSelect').value = settings.font;
+    document.getElementById('themeSelect').value = settings.theme;
+    document.getElementById('autosaveInterval').value = settings.autosaveInterval;
+    applySettings(settings);
+}
+
+// 绑定保存按钮
+document.getElementById('saveBtn').addEventListener('click',()=>{
+    const newSettings = {
+        font: document.getElementById('fontSelect').value,
+        theme: document.getElementById('themeSelect').value,
+        autosaveInterval: parseInt(document.getElementById('autosaveInterval').value,10)||30
+    };
+    saveSettings(newSettings);
+    applySettings(newSettings);
+    alert('设置已保存！');
+});
+
+initForm();
+</script>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
