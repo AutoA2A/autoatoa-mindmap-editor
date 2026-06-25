@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>导出思维导图</title>
+<style>
+:root{
+    --primary:#2563eb;
+    --secondary:#10b983;
+    --bg:#f9fafb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:Helvetica Neue,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin-top:60px; /* 预留给系统注入的统一导航 */
+}
+.container{
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    max-width:800px;
+    margin:0 auto;
+}
+.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    overflow:hidden;
+}
+.card-header{
+    background:var(--primary);
+    color:#fff;
+    padding:12px 16px;
+    font-size:1.25rem;
+    font-weight:600;
+}
+.card-body{
+    padding:16px;
+}
+.label-block{
+    margin-bottom:12px;
+}
+.label-block label{
+    display:block;
+    margin-bottom:4px;
+    font-weight:500;
+}
+.input-control{
+    width:100%;
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:4px;
+    font-size:0.9rem;
+    background:#fff;
+}
+.color-input{
+    height:38px;
+    padding:0;
+}
+.btn{
+    display:inline-block;
+    padding:10px 16px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    font-size:0.95rem;
+    cursor:pointer;
+    text-decoration:none;
+    text-align:center;
+}
+.btn:hover{
+    background:#1d4ed8;
+}
+.btn-secondary{
+    background:#6b7280;
+}
+.btn-secondary:hover{
+    background:#4b5563;
+}
+.preview{
+    margin-top:16px;
+    text-align:center;
+    min-height:200px;
+    background:#f3f4f6;
+    border-radius:var(--radius);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--muted);
+    font-size:0.9rem;
+}
+.preview svg{
+    max-width:100%;
+    max-height:100%;
+}
+</style>
+<meta name="description" content="导出为PNG、JSON或SVG，可调节分辨率和背景色。"><meta name="keywords" content="思维导图,在线编辑,拖拽节点,导出PNG,模板库,历史记录,实时协作,响应式"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="导出思维导图"><meta property="og:description" content="导出为PNG、JSON或SVG，可调节分辨率和背景色。"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="导出思维导图"><meta name="twitter:description" content="导出为PNG、JSON或SVG，可调节分辨率和背景色。"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"导出思维导图","description":"导出为PNG、JSON或SVG，可调节分辨率和背景色。","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="card-header">导出思维导图</div>
+        <div class="card-body">
+            <div id="emptyState" style="display:none;text-align:center;padding:32px;color:var(--muted);">
+                暂无思维导图数据，请在 <a href="index.html" class="btn btn-secondary">编辑器</a> 中创建后再导出，或前往 <a href="template.html" class="btn btn-secondary">模板库</a> 选择模板。
+            </div>
+            <div id="exportPanel" style="display:none;">
+                <div class="label-block">
+                    <label for="formatSelect">导出格式</label>
+                    <select id="formatSelect" class="input-control">
+                        <option value="png">PNG 图片</option>
+                        <option value="svg">SVG 矢量图</option>
+                        <option value="json">JSON 数据</option>
+                    </select>
+                </div>
+                <div class="label-block">
+                    <label for="bgColor">背景色</label>
+                    <input type="color" id="bgColor" class="color-input" value="#ffffff">
+                </div>
+                <div class="label-block">
+                    <label for="resolution">分辨率倍数（影响 PNG 清晰度）</label>
+                    <input type="number" id="resolution" class="input-control" min="1" max="5" value="2">
+                </div>
+                <button id="exportBtn" class="btn">导出</button>
+                <div id="previewArea" class="preview">预览将在此显示</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// IndexedDB helper
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('MindMapDB', 1);
+        req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('maps')) {
+                db.createObjectStore('maps', { keyPath: 'id' });
+            }
+        };
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+    });
+}
+
+// 通过 id 获取思维导图
+async function getMapById(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('maps', 'readonly');
+        const store = tx.objectStore('maps');
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result?.data || null);
+        req.onerror = e => reject(e.target.error);
+    });
+}
+
+// 获取当前思维导图（假设存储键为 'current'）
+async function getCurrentMap() {
+    return getMapById('current');
+}
+
+// 计算节点边界
+function getBounds(nodes) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+        if (n.x < minX) minX = n.x;
+        if (n.x > maxX) maxX = n.x;
+        if (n.y < minY) minY = n.y;
+        if (n.y > maxY) maxY = n.y;
+    });
+    return { minX, minY, maxX, maxY };
+}
+
+// 绘制思维导图为 SVG 字符串
+function drawMapToSVG(data, scale, bgColor) {
+    const { nodes = [], edges = [] } = data;
+    const padding = 50;
+    const bounds = getBounds(nodes);
+    const width = (bounds.maxX - bounds.minX) + 2 * padding;
+    const height = (bounds.maxY - bounds.minY) + 2 * padding;
+    const svgWidth = width * scale;
+    const svgHeight = height * scale;
+
+    // 创建 SVG 元素字符串
+    let svg = `<svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">`;
+    // 背景
+    svg += `<rect width="100%" height="100%" fill="${bgColor}"/>`;
+    // 边
+    edges.forEach(e => {
+        const fromNode = nodes.find(n => n.id === e.from);
+        const toNode = nodes.find(n => n.id === e.to);
+        if (!fromNode || !toNode) return;
+        const x1 = (fromNode.x - bounds.minX + padding) * scale;
+        const y1 = (fromNode.y - bounds.minY + padding) * scale;
+        const x2 = (toNode.x - bounds.minX + padding) * scale;
+        const y2 = (toNode.y - bounds.minY + padding) * scale;
+        svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${'#6b7280'}" stroke-width="${2 * scale}" />`;
+    });
+    // 节点
+    nodes.forEach(n => {
+        const cx = (n.x - bounds.minX + padding) * scale;
+        const cy = (n.y - bounds.minY + padding) * scale;
+        const r = (n.r || 20) * scale;
+        svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${'#ffffff'}" stroke="${'#2563eb'}" stroke-width="${2}" />`;
+        svg += `<text x="${cx}" y="${cy + 4}" text-anchor="middle" fill="${'#111827'}" font-size="${12 * scale}" font-family="Helvetica Neue,Arial,sans-serif">${n.label}</text>`;
+    });
+    svg += `</svg>`;
+    return { svg, width: svgWidth, height: svgHeight };
+}
+
+// 下载 Blob
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// 主流程
+(async function init() {
+    const emptyState = document.getElementById('emptyState');
+    const exportPanel = document.getElementById('exportPanel');
+    const previewArea = document.getElementById('previewArea');
+    const formatSelect = document.getElementById('formatSelect');
+    const bgColorInput = document.getElementById('bgColor');
+    const resolutionInput = document.getElementById('resolution');
+    const exportBtn = document.getElementById('exportBtn');
+
+    const data = await getCurrentMap();
+    if (!data) {
+        emptyState.style.display = 'block';
+        exportPanel.style.display = 'none';
+        return;
+    }
+    emptyState.style.display = 'none';
+    exportPanel.style.display = 'block';
+
+    // 预览更新函数
+    function updatePreview() {
+        const scale = parseFloat(resolutionInput.value) || 1;
+        const bgColor = bgColorInput.value;
+        const { svg } = drawMapToSVG(data, scale, bgColor);
+        previewArea.innerHTML = ''; // 清除之前内容
+        const div = document.createElement('div');
+        div.innerHTML = svg;
+        previewArea.appendChild(div.firstChild);
+    }
+
+    // 初始预览
+    updatePreview();
+
+    // 监听变化
+    [formatSelect, bgColorInput, resolutionInput].forEach(el => {
+        el.addEventListener('input', updatePreview);
+        el.addEventListener('change', updatePreview);
+    });
+
+    // 导出按钮
+    exportBtn.addEventListener('click', async () => {
+        const format = formatSelect.value;
+        const scale = parseFloat(resolutionInput.value) || 1;
+        const bgColor = bgColorInput.value;
+
+        if (format === 'svg') {
+            const { svg } = drawMapToSVG(data, scale, bgColor);
+            const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+            downloadBlob(blob, 'mindmap.svg');
+        } else if (format === 'json') {
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+            downloadBlob(blob, 'mindmap.json');
+        } else if (format === 'png') {
+            const { svg } = drawMapToSVG(data, scale, bgColor);
+            const img = new Image();
+            const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob(blob => {
+                    downloadBlob(blob, 'mindmap.png');
+                    URL.revokeObjectURL(url);
+                }, 'image/png');
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                alert('生成 PNG 失败');
+            };
+            img.src = url;
+        }
+    });
+})();
+</script>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
