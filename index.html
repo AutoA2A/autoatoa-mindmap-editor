@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>思维导图编辑器 - 主编辑器</title>
+<style>
+:root{
+    --primary:#2563eb;
+    --secondary:#10b983;
+    --bg:#f9fafb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:Helvetica Neue,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin-top:60px; /* 预留给系统注入的统一导航 */
+}
+#app{
+    display:flex;
+    gap:16px;
+    padding:16px;
+    flex-wrap:wrap;
+}
+.nav{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:12px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    width:200px;
+    min-width:150px;
+}
+.nav a{
+    display:block;
+    width:100%;
+    margin:8px 0;
+    padding:10px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    font-size:1rem;
+    text-decoration:none;
+    text-align:center;
+}
+.nav a:hover{
+    background:#1d4ed8;
+}
+.toolbar{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:12px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    width:220px;
+    min-width:180px;
+}
+.toolbar button{
+    display:block;
+    width:100%;
+    margin:8px 0;
+    padding:10px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    font-size:1rem;
+    cursor:pointer;
+}
+.toolbar button:hover{
+    background:#1d4ed8;
+}
+.main{
+    flex:1;
+    min-width:300px;
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    overflow:hidden;
+    position:relative;
+}
+.props{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:12px;
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    width:260px;
+    min-width:200px;
+}
+.props h3{
+    margin-top:0;
+    color:var(--primary);
+    font-size:1.2rem;
+}
+#propContent{
+    margin-top:12px;
+}
+#propContent input,
+#propContent select{
+    width:100%;
+    padding:6px;
+    margin:6px 0;
+    border:1px solid #ccc;
+    border-radius:4px;
+    font-size:0.9rem;
+}
+.selected rect{
+    stroke:var(--secondary);
+    stroke-width:2;
+}
+svg{display:block;}
+</style>
+<meta name="description" content="主编辑器页面，提供画布、节点拖拽、属性面板、工具栏，支持实时保存至本地IndexedDB。"><meta name="keywords" content="思维导图,在线编辑,拖拽节点,导出PNG,模板库,历史记录,实时协作,响应式"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="思维导图编辑器 - 主编辑器"><meta property="og:description" content="主编辑器页面，提供画布、节点拖拽、属性面板、工具栏，支持实时保存至本地IndexedDB。"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="思维导图编辑器 - 主编辑器"><meta name="twitter:description" content="主编辑器页面，提供画布、节点拖拽、属性面板、工具栏，支持实时保存至本地IndexedDB。"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"思维导图编辑器 - 主编辑器","description":"主编辑器页面，提供画布、节点拖拽、属性面板、工具栏，支持实时保存至本地IndexedDB。","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+<div id="app">
+    <div class="nav">
+        <a href="template.html">模板库</a>
+        <a href="export.html">导出</a>
+        <a href="history.html">历史记录</a>
+        <a href="settings.html">设置</a>
+        <a href="share.html">分享</a>
+        <a href="help.html">帮助</a>
+        <a href="about.html">关于</a>
+    </div>
+    <div class="toolbar" id="toolbar">
+        <button id="addNodeBtn">+ 节点</button>
+        <button id="deleteNodeBtn">- 删除</button>
+        <button id="clearBtn">清空画布</button>
+    </div>
+    <div class="main">
+        <svg id="canvas" width="100%" height="100%"></svg>
+    </div>
+    <div class="props" id="props">
+        <h3>属性</h3>
+        <div id="propContent"></div>
+    </div>
+</div>
+
+<script>
+// ====================== 配置 ======================
+const NODE_WIDTH = 120;
+const NODE_HEIGHT = 40;
+const PRIMARY_COLOR = '#e0e0ff';
+
+// ====================== 状态 ======================
+let nodes = []; // {id,x,y,width,height,label,color}
+let selectedId = null;
+let draggingNode = null;
+let dragOffset = {x:0, y:0};
+let db = null;
+const DB_NAME = 'mindmapDB';
+const STORE_NAME = 'maps';
+
+// ====================== IndexedDB ======================
+function openDB(){
+    return new Promise((resolve,reject)=>{
+        const req = indexedDB.open(DB_NAME,1);
+        req.onupgradeneeded = e=>{
+            const db = e.target.result;
+            if(!db.objectStoreNames.contains(STORE_NAME)){
+                db.createObjectStore(STORE_NAME,{keyPath:'id'});
+            }
+        };
+        req.onsuccess = e=>{
+            db = e.target.result;
+            resolve();
+        };
+        req.onerror = e=>reject(e.target.error);
+    });
+}
+function getMap(){
+    return new Promise((resolve,reject)=>{
+        const tx = db.transaction(STORE_NAME,'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get('main');
+        req.onsuccess = e=>resolve(e.target.result ? e.target.result.data : null);
+        req.onerror = e=>reject(e.target.error);
+    });
+}
+function saveMap(){
+    if(!db) return;
+    const tx = db.transaction(STORE_NAME,'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.put({id:'main',data:{nodes:nodes}});
+    req.onerror = e=>console.error('保存失败',e.target.error);
+}
+
+// ====================== 节点操作 ======================
+function createNode(label,x,y){
+    return {
+        id: Date.now()+Math.random(),
+        label: label || '新节点',
+        x: x || 100,
+        y: y || 100,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
+        color: PRIMARY_COLOR
+    };
+}
+function addNode(){
+    const n = createNode();
+    nodes.push(n);
+    selectedId = n.id;
+    render();
+    showProps(selectedId);
+    saveMap();
+}
+function deleteNode(){
+    if(selectedId===null) return;
+    nodes = nodes.filter(n=>n.id!==selectedId);
+    selectedId = null;
+    render();
+    document.getElementById('propContent').innerHTML = '';
+    saveMap();
+}
+function clearAll(){
+    nodes = [];
+    selectedId = null;
+    render();
+    document.getElementById('propContent').innerHTML = '';
+    const init = createNode('中心节点',200,100);
+    nodes.push(init);
+    selectedId = init.id;
+    render();
+    showProps(selectedId);
+    saveMap();
+}
+function selectNode(id){
+    selectedId = id;
+    render();
+    showProps(id);
+}
+function showProps(id){
+    const container = document.getElementById('propContent');
+    container.innerHTML = '';
+    const node = nodes.find(n=>n.id===id);
+    if(!node) return;
+    // 标签
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.placeholder = '标签';
+    labelInput.value = node.label;
+    labelInput.oninput = e=>{
+        node.label = e.target.value;
+        render();
+        saveMap();
+    };
+    container.appendChild(labelInput);
+    // 颜色
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = node.color;
+    colorInput.oninput = e=>{
+        node.color = e.target.value;
+        render();
+        saveMap();
+    };
+    container.appendChild(colorInput);
+    // 宽度
+    const widthLabel = document.createElement('div');
+    widthLabel.textContent = '宽';
+    container.appendChild(widthLabel);
+    const widthInput = document.createElement('input');
+    widthInput.type = 'number';
+    widthInput.min = 40;
+    widthInput.value = node.width;
+    widthInput.oninput = e=>{
+        const v = parseFloat(e.target.value);
+        if(!isNaN(v)){ node.width = v; render(); saveMap(); }
+    };
+    container.appendChild(widthInput);
+    // 高度
+    const heightLabel = document.createElement('div');
+    heightLabel.textContent = '高';
+    container.appendChild(heightLabel);
+    const heightInput = document.createElement('input');
+    heightInput.type = 'number';
+    heightInput.min = 20;
+    heightInput.value = node.height;
+    heightInput.oninput = e=>{
+        const v = parseFloat(e.target.value);
+        if(!isNaN(v)){ node.height = v; render(); saveMap(); }
+    };
+    container.appendChild(heightInput);
+}
+
+// ====================== 渲染 ======================
+function render(){
+    const svg = document.getElementById('canvas');
+    svg.innerHTML = '';
+    nodes.forEach(node=>{
+        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+        g.setAttribute('data-id',node.id);
+        if(node.id===selectedId) g.classList.add('selected');
+        // 矩形
+        const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        rect.setAttribute('x',node.x);
+        rect.setAttribute('y',node.y);
+        rect.setAttribute('width',node.width);
+        rect.setAttribute('height',node.height);
+        rect.setAttribute('fill',node.color);
+        rect.setAttribute('stroke','#999');
+        rect.setAttribute('stroke-width',1);
+        g.appendChild(rect);
+        // 文本
+        const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+        text.setAttribute('x',node.x + node.width/2);
+        text.setAttribute('y',node.y + node.height/2 + 4);
+        text.setAttribute('text-anchor','middle');
+        text.setAttribute('fill','#000');
+        text.setAttribute('font-size','14px');
+        text.textContent = node.label;
+        g.appendChild(text);
+        svg.appendChild(g);
+    });
+}
+
+// ====================== 交互 ======================
+function initEvents(){
+    const svg = document.getElementById('canvas');
+    svg.addEventListener('pointerdown',e=>{
+        const target = e.target;
+        if(target.tagName==='rect' || target.tagName==='text'){
+            const g = target.parentElement;
+            const id = Number(g.getAttribute('data-id'));
+            selectNode(id);
+            const node = nodes.find(n=>n.id===id);
+            if(!node) return;
+            draggingNode = node;
+            const svgRect = svg.getBoundingClientRect();
+            dragOffset.x = e.clientX - svgRect.left - node.x;
+            dragOffset.y = e.clientY - svgRect.top - node.y;
+        }else{
+            // 点击空白处取消选择
+            selectedId = null;
+            render();
+            document.getElementById('propContent').innerHTML = '';
+        }
+    });
+    svg.addEventListener('pointermove',e=>{
+        if(!draggingNode) return;
+        const svgRect = svg.getBoundingClientRect();
+        draggingNode.x = e.clientX - svgRect.left - dragOffset.x;
+        draggingNode.y = e.clientY - svgRect.top - dragOffset.y;
+        // 边界限制（可选）
+        if(draggingNode.x<0) draggingNode.x=0;
+        if(draggingNode.y<0) draggingNode.y=0;
+        if(draggingNode.x+draggingNode.width>svgRect.width) draggingNode.x=svgRect.width-draggingNode.width;
+        if(draggingNode.y+draggingNode.height>svgRect.height) draggingNode.y=svgRect.height-draggingNode.height;
+        render();
+        saveMap();
+    });
+    svg.addEventListener('pointerup',()=>{
+        draggingNode = null;
+    });
+    svg.addEventListener('pointerleave',()=>{
+        draggingNode = null;
+    });
+}
+
+// ====================== 按钮事件 ======================
+document.getElementById('addNodeBtn').addEventListener('click',addNode);
+document.getElementById('deleteNodeBtn').addEventListener('click',deleteNode);
+document.getElementById('clearBtn').addEventListener('click',clearAll);
+
+// ====================== 初始化 ======================
+(async function init(){
+    await openDB();
+    const data = await getMap();
+    if(data && data.nodes && data.nodes.length){
+        nodes = data.nodes;
+        // 确保有选中状态（默认第一个）
+        if(nodes.length){ selectedId = nodes[0].id; }
+    }else{
+        const init = createNode('中心节点',200,100);
+        nodes.push(init);
+        selectedId = init.id;
+    }
+    render();
+    showProps(selectedId);
+    initEvents();
+})();
+</script>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
