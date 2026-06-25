@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>模板库</title>
+<style>
+:root{
+    --primary:#2563eb;
+    --secondary:#10b983;
+    --bg:#f9fafb;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:Helvetica Neue,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    margin-top:60px; /* 预留给系统注入的统一导航 */
+}
+.container{
+    padding:16px;
+    display:grid;
+    gap:16px;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+}
+.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:0 2px 4px rgba(0,0,0,0.08);
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform .15s ease-in-out,box-shadow .15s ease-in-out;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding:12px;
+}
+.card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.12);
+}
+.card svg{
+    width:200px;
+    height:200px;
+    display:block;
+}
+.card h3{
+    margin:12px 0 4px;
+    font-size:1.1rem;
+    color:var(--primary);
+}
+.card p{
+    font-size:.9rem;
+    color:var(--muted);
+    margin:0;
+}
+</style>
+<meta name="description" content="提供多种思维导图模板，点击模板即可加载到编辑器。"><meta name="keywords" content="思维导图,在线编辑,拖拽节点,导出PNG,模板库,历史记录,实时协作,响应式"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:title" content="模板库"><meta property="og:description" content="提供多种思维导图模板，点击模板即可加载到编辑器。"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="模板库"><meta name="twitter:description" content="提供多种思维导图模板，点击模板即可加载到编辑器。"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"模板库","description":"提供多种思维导图模板，点击模板即可加载到编辑器。","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"}}</script><style data-a2a="basecss">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,canvas,svg,video,table{max-width:100%;height:auto}pre,code{white-space:pre-wrap;word-break:break-word}[data-a2a="header"]{width:100%}@media(max-width:640px){body{font-size:15px}}</style></head>
+<body>
+<div class="container" id="templateContainer"></div>
+
+<script>
+// ====================== 模板数据 ======================
+const templates = [
+    {
+        id: 'central-two',
+        title: '中心双分支',
+        desc: '一个中心节点带两个子节点',
+        nodes: [
+            {id:'n1', label:'中心', cx:150, cy:100, r:20},
+            {id:'n2', label:'子A', cx:50, cy:200, r:20},
+            {id:'n3', label:'子B', cx:250, cy:200, r:20}
+        ],
+        edges: [
+            {from:'n1', to:'n2'},
+            {from:'n1', to:'n3'}
+        ]
+    },
+    {
+        },
+    {
+        id: 'linear-three',
+        title: '线性三节点',
+        desc: '三个节点垂直排列',
+        nodes: [
+            {id:'n1', label:'顶部', cx:150, cy:80, r:20},
+            {id:'n2', label:'中部', cx:150, cy:180, r:20},
+            {id:'n3', label:'底部', cx:150, cy:280, r:20}
+        ],
+        edges: [
+            {from:'n1', to:'n2'},
+            {from:'n2', to:'n3'}
+        ]
+    },
+    {
+        id: 'radial-four',
+        title: '放射四分支',
+        desc: '中心节点四周各有一个子节点',
+        nodes: [
+            {id:'n1', label:'中心', cx:150, cy:150, r:22},
+            {id:'n2', label:'上', cx:150, cy:50, r:18},
+            {id:'n3', label:'下', cx:150, cy:250, r:18},
+            {id:'n4', label:'左', cx:50, cy:150, r:18},
+            {id:'n5', label:'右', cx:250, cy:150, r:18}
+        ],
+        edges: [
+            {from:'n1', to:'n2'},
+            {from:'n1', to:'n3'},
+            {from:'n1', to:'n4'},
+            {from:'n1', to:'n5'}
+        ]
+    }
+];
+
+// ====================== 渲染函数 ======================
+function renderTemplates(){
+    const container = document.getElementById('templateContainer');
+    container.innerHTML = '';
+    templates.forEach(tpl=>{
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.id = tpl.id;
+        // 生成预览SVG
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS,'svg');
+        svg.setAttribute('width','200');
+        svg.setAttribute('height','200');
+        svg.setAttribute('viewBox','0 0 300 300');
+        // 边
+        tpl.edges.forEach(e=>{
+            const fromNode = tpl.nodes.find(n=>n.id===e.from);
+            const toNode   = tpl.nodes.find(n=>n.id===e.to);
+            if(fromNode && toNode){
+                const line = document.createElementNS(svgNS,'line');
+                line.setAttribute('x1', fromNode.cx);
+                line.setAttribute('y1', fromNode.cy);
+                line.setAttribute('x2', toNode.cx);
+                line.setAttribute('y2', toNode.cy);
+                line.setAttribute('stroke', 'var(--muted)');
+                line.setAttribute('stroke-width', '2');
+                svg.appendChild(line);
+            }
+        });
+        // 节点
+        tpl.nodes.forEach(node=>{
+            const circle = document.createElementNS(svgNS,'circle');
+            circle.setAttribute('cx', node.cx);
+            circle.setAttribute('cy', node.cy);
+            circle.setAttribute('r', node.r);
+            circle.setAttribute('fill', 'var(--card)');
+            circle.setAttribute('stroke', 'var(--primary)');
+            circle.setAttribute('stroke-width', '2');
+            svg.appendChild(circle);
+            const text = document.createElementNS(svgNS,'text');
+            text.setAttribute('x', node.cx);
+            text.setAttribute('y', node.cy+4);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('fill', 'var(--text)');
+            text.setAttribute('font-size', '12');
+            text.textContent = node.label;
+            svg.appendChild(text);
+        });
+        card.appendChild(svg);
+        const title = document.createElement('h3');
+        title.textContent = tpl.title;
+        card.appendChild(title);
+        const desc = document.createElement('p');
+        desc.textContent = tpl.desc;
+        card.appendChild(desc);
+        // 点击加载
+        card.addEventListener('click',()=>{
+            // 保存到 localStorage，供 index.html 读取
+            localStorage.setItem('currentMindmap', JSON.stringify(tpl));
+            // 跳转到主编辑器
+            window.location.href = 'index.html';
+        });
+        container.appendChild(card);
+    });
+}
+
+// ====================== 初始化 ======================
+window.addEventListener('DOMContentLoaded', renderTemplates);
+</script>
+<footer data-a2a="footer" style="margin-top:48px;padding:28px 16px;border-top:1px solid rgba(127,127,127,.16);text-align:center;font-family:system-ui,-apple-system,'PingFang SC',sans-serif;line-height:1.9;color:#8a8f99;background:transparent"><a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px"><img src="https://agent.oagi.com.cn/uploads/202606/29ea3ed5413830b3.png" alt="AutoA2A" style="height:36px;vertical-align:middle;border:0"></a><div style="font-size:13.5px;color:#6b7280;max-width:760px;margin:0 auto 6px">✅️ <b>AutoA2A</b> · 智能体互连 Agent to Agent 平台——让智能体无缝发现、协商、协作与安全交换数据，开启 AI 即服务新时代。</div><div style="font-size:13px">本网站由 <a href="https://www.autoa2a.org" target="_blank" rel="noopener" style="color:#f2603c;text-decoration:none;font-weight:600">www.autoa2a.org</a> 多个 AI 协作生成</div><div style="font-size:12px;color:#aab;margin-top:6px">Copyright © 2025 - 2026 AutoA2A. All Rights Reserved. A2A版权所有</div></footer></body>
+</html>
